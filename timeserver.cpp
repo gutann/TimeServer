@@ -30,32 +30,40 @@ struct CHelloWorld_Service
         // 有客戶端連接時accept_handler觸發
         void accept_handler(boost::shared_ptr<tcp::socket> psocket, error_code ec)
         {
-                if(ec) return;
-                // 繼續等待連接
-                start();
-                // 顯示遠程IP
-                std::cout << psocket->remote_endpoint().address() << std::endl;
-                // 發送信息(非阻塞)
-                //boost::shared_ptr<std::string> pstr(new std::string("ACK"));
-                //psocket->async_write_some(buffer(*pstr),
-                //boost::bind(&CHelloWorld_Service::write_handler, this, pstr, _1, _2));
+            if(ec) return;
+            // 繼續等待連接
+            start();
+            // 顯示遠程IP
+            std::cout << psocket->remote_endpoint().address() << std::endl;
+            // 發送信息(非阻塞)
+            //boost::shared_ptr<std::string> pstr(new std::string("ACK"));
+            //psocket->async_write_some(buffer(*pstr),
+            //boost::bind(&CHelloWorld_Service::write_handler, this, pstr, _1, _2));
      		for (;;)
     		{
       			boost::array<char, 128> buf;
       			boost::system::error_code error;
-
+#if 1
       			size_t len = psocket->read_some(boost::asio::buffer(buf), error);   
-			if (error == boost::asio::error::eof)
+				if (error == boost::asio::error::eof)
        				 break; // Connection closed cleanly by peer.
       			else if (error)
         			throw boost::system::system_error(error); // Some other error.
-
+			//sleep()0;
       			std::cout.write(buf.data(), len);
-			std::cout << std::endl <<  std::flush;
-			boost::shared_ptr<std::string> pstr(new std::string("ACK"));
-                	psocket->async_write_some(buffer(*pstr),boost::bind(&CHelloWorld_Service::write_handler, this, pstr, _1, _2));
-
-    		}
+				std::cout << std::endl <<  std::flush;
+			 	if (len > 0)
+#endif
+				{	
+					boost::shared_ptr<std::string> pstr(new std::string("ACK"));
+               //	psocket->async_write_some(buffer(*pstr),boost::bind(&CHelloWorld_Service::write_handler, this, pstr, _1, _2));
+    				boost::asio::async_write(*psocket, buffer(*pstr),
+					boost::asio::transfer_at_least(1),
+        			boost::bind(&CHelloWorld_Service::write_handler, this, pstr,
+          				boost::asio::placeholders::error, 
+          				boost::asio::placeholders::bytes_transferred));
+				}
+			}
 #if 0
 		boost::asio::streambuf sb;
            // 	while (0 == boost::asio::read(*psocket, sb, ec)) 
